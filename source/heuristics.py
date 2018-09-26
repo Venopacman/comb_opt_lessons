@@ -41,15 +41,17 @@ def calc_cost_metric(deltas, travel_time, feasible_ready_time, feasible_due_time
 def _get_route_with_neighbour_heuristic(graph: nx.Graph, deltas, vehicle_capacity, depo_due_time):
     def is_route_valid(_route):
         if (sum([it['demand'] for it in _route]) <= vehicle_capacity) & (
-                _route[-1]['begin_t'] <= depo_due_time):
+                all([_route[key]['begin_t'] <= _route[key]['due_t'] for key in [-1, -2]])):
             return True
         else:
             return False
 
     filtered_graph = graph.copy()
+    result_graph = graph.copy()
     route = [{'node': 0, 'begin_t': 0, **graph.nodes[0]},
              {'node': 0, 'begin_t': 0, **graph.nodes[0]}]
-    while True:
+    condition = True
+    while condition:
         # TODO implement case with small capacity and big next_stop node demand
         cand_dict = dict()
         for cand_node, cand_data in list(filtered_graph.nodes(data=True))[1:]:
@@ -57,7 +59,7 @@ def _get_route_with_neighbour_heuristic(graph: nx.Graph, deltas, vehicle_capacit
                                                     graph[route[-2]['node']][cand_node]['time'],
                                                     cand_data['ready_t'], cand_data['due_t'],
                                                     route[-2]['begin_t'], route[-2]['service_t'])
-        # TODO workaround, logic fix needed
+        # # TODO workaround, logic fix needed
         if len(cand_dict.keys()) == 0:
             break
         next_stop_node = min(set(cand_dict.keys()), key=cand_dict.get)
@@ -81,10 +83,13 @@ def _get_route_with_neighbour_heuristic(graph: nx.Graph, deltas, vehicle_capacit
             filtered_graph.remove_node(next_stop_node)
             # print(next_stop_node)
         else:
-            break
+            filtered_graph.remove_node(next_stop_node)
+            continue
 
+        condition = len(cand_dict.keys()) != 0
         # assert is_route_valid(route)
-    return route, filtered_graph
+    result_graph.remove_nodes_from([it['node'] for it in route[1:-1]])
+    return route, result_graph
 
 
 class HeuristicSolver:
