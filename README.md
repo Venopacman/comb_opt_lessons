@@ -1,2 +1,2 @@
 # comb_opt_lessons
-laboratory works for combinatorial optimization course
+laboratory works for combinatoric optimization course
