@@ -1,7 +1,6 @@
 import networkx as nx
 from scipy.spatial import distance
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import re
 
 
@@ -52,27 +51,19 @@ def plot_graph_nodes(graph: nx.Graph):
     plt.show()
 
 
-def _get_color_shape_tuple_iterator():
-    """
-    Return iterator for color - shape tuple list
-    :return:
-    """
-    import itertools
-    return iter(
-        itertools.product(['b', 'g', 'r', 'c', 'm', 'y', 'k'],
-                          ['o'] * 3))
-
-
 def plot_routes(graph: nx.Graph, route_list):
     pos = dict(zip(graph.nodes, zip(*[[it[1] for it in graph.nodes.data(key)] for key in ("x", "y")])))
     color_map = plt.cm.get_cmap('cubehelix')
     # print(color_map)
+    nx.draw_networkx_nodes(graph, nodelist=[0], pos=pos, node_size=60, node_color=(0.5, 0.5, 0.5))
     for i, route in enumerate(route_list):
-        color = color_map((i + 1) / len(route_list))
+        color = color_map((i + 3) / (len(route_list) + 5))
         # print(color[:-1])
+        # print(color)
         nx.draw_networkx_nodes(graph, nodelist=[it['node'] for it in route[1:-1]], pos=pos, node_size=50,
                                node_color=[color[:-1]] * len(route[1:-1]))
         for ind in range(1, len(route)):
-            nx.draw_networkx_edges(graph, pos=pos, edgelist=[(route[ind]['node'], route[ind-1]['node'])], edge_color=[color])
+            nx.draw_networkx_edges(graph, pos=pos, edgelist=[(route[ind]['node'], route[ind - 1]['node'])],
+                                   edge_color=[color])
     plt.show()
-    print(route_list)
+    # print(route_list)
