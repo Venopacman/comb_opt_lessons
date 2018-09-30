@@ -10,6 +10,7 @@ def calc_begin_time(feasible_ready_time, prev_begin_time, prev_service_time, tra
     :param travel_time: 
     :return: 
     """
+    assert travel_time > 0
     return max([feasible_ready_time, prev_begin_time + prev_service_time + travel_time])
 
 
@@ -38,68 +39,6 @@ def calc_cost_metric(deltas, travel_time, feasible_ready_time, feasible_due_time
     return deltas[0] * travel_time + deltas[1] * get_time_diff() + deltas[2] * calc_urgency()
 
 
-def _get_route_with_neighbour_heuristic(graph: nx.Graph, deltas, vehicle_capacity):
-    """
-    Generate init solution according to Marius M. Solomon
-    A Time-Oriented, Nearest-Neighbor Heuristic algorithm
-    :param graph:
-    :param deltas:
-    :param vehicle_capacity:
-    :return:
-    """
-
-    def is_route_valid_for_nn(_route):
-        if sum([it['demand'] for it in _route]) <= vehicle_capacity:
-            if all([_route[key]['begin_t'] <= _route[key]['due_t'] for key in [-1, -2]]):
-                return True
-            else:
-                return False
-        else:
-            return False
-
-    filtered_graph = graph.copy()
-    result_graph = graph.copy()
-    route = [{'node': 0, 'begin_t': 0, **graph.nodes[0]},
-             {'node': 0, 'begin_t': 0, **graph.nodes[0]}]
-    condition = True
-    while condition:
-        cand_dict = dict()
-        for cand_node, cand_data in list(filtered_graph.nodes(data=True))[1:]:
-            cand_dict[cand_node] = calc_cost_metric(deltas,
-                                                    graph[route[-2]['node']][cand_node]['time'],
-                                                    cand_data['ready_t'], cand_data['due_t'],
-                                                    route[-2]['begin_t'], route[-2]['service_t'])
-        # TODO workaround, logic fix needed
-        if len(cand_dict.keys()) == 0:
-            break
-        next_stop_node = min(set(cand_dict.keys()), key=cand_dict.get)
-        next_stop_begin_time = calc_begin_time(graph.nodes[next_stop_node]['ready_t'],
-                                               route[-2]['begin_t'],
-                                               route[-2]['service_t'],
-                                               graph[route[-2]['node']][next_stop_node]['time'])
-        depot_arrival_time = calc_begin_time(graph.nodes[0]['ready_t'],
-                                             next_stop_begin_time,
-                                             graph.nodes[next_stop_node]['service_t'],
-                                             graph[0][next_stop_node]['time'])
-        feasible_route = route[:-1] + [
-            {'node': next_stop_node,
-             'begin_t': next_stop_begin_time,
-             **graph.nodes[next_stop_node]}] + [
-                             {'node': 0,
-                              'begin_t': depot_arrival_time,
-                              **graph.nodes[0]}]
-        if is_route_valid_for_nn(feasible_route):
-            route = feasible_route
-            filtered_graph.remove_node(next_stop_node)
-        else:
-            filtered_graph.remove_node(next_stop_node)  # TODO it may break all ?
-            continue
-
-        condition = len(cand_dict.keys()) != 0
-    result_graph.remove_nodes_from([it['node'] for it in route[1:-1]])
-    return route, result_graph
-
-
 class HeuristicSolver:
     def __init__(self, route_graph: nx.Graph, vehicle_info, deltas=(0.8, 0.0, 0.2)):
         """
@@ -125,7 +64,6 @@ class HeuristicSolver:
         else:
             # print("Не убираемся по capacity")
             return False
-        # return  &
 
     def calculate_solution_target_metric(self, solution, with_vehicle_amount=True):
         result = sum([sum([self.route_graph[route[ind - 1]['node']][route[ind]['node']]['time']
@@ -133,6 +71,69 @@ class HeuristicSolver:
         return result + (len(solution) / self.vehicle_amount) if with_vehicle_amount else result
 
     def get_initial_solution(self):
+        def _get_route_with_neighbour_heuristic(graph: nx.Graph, deltas, vehicle_capacity):
+            """
+            Generate init solution according to Marius M. Solomon
+            A Time-Oriented, Nearest-Neighbor Heuristic algorithm
+            :param graph:
+            :param deltas:
+            :param vehicle_capacity:
+            :return:
+            """
+
+            def is_route_valid_for_nn(_route):
+                if sum([it['demand'] for it in _route]) <= vehicle_capacity:
+                    if all([_route[key]['begin_t'] <= _route[key]['due_t'] for key in [-1, -2]]):
+                        return True
+                    else:
+                        return False
+                else:
+                    return False
+
+            filtered_graph = graph.copy()
+            result_graph = graph.copy()
+            route = [{'node': 0, 'begin_t': 0, **graph.nodes[0].copy()},
+                     {'node': 0, 'begin_t': 0, **graph.nodes[0].copy()}]
+            condition = True
+            while condition:
+                cand_dict = dict()
+                for cand_node, cand_data in list(filtered_graph.nodes(data=True))[1:]:
+                    cand_dict[cand_node] = calc_cost_metric(deltas,
+                                                            graph[route[-2]['node']][cand_node]['time'],
+                                                            cand_data['ready_t'], cand_data['due_t'],
+                                                            route[-2]['begin_t'], route[-2]['service_t'])
+                # TODO workaround, logic fix needed
+                if len(cand_dict.keys()) == 0:
+                    break
+                next_stop_node = min(set(cand_dict.keys()), key=cand_dict.get)
+                next_stop_begin_time = calc_begin_time(graph.nodes[next_stop_node]['ready_t'],
+                                                       route[-2]['begin_t'],
+                                                       route[-2]['service_t'],
+                                                       graph[route[-2]['node']][next_stop_node]['time'])
+                depot_arrival_time = calc_begin_time(graph.nodes[0]['ready_t'],
+                                                     next_stop_begin_time,
+                                                     graph.nodes[next_stop_node]['service_t'],
+                                                     graph[0][next_stop_node]['time'])
+                feasible_route = route[:-1] + [
+                    {'node': next_stop_node,
+                     'begin_t': next_stop_begin_time,
+                     **graph.nodes[next_stop_node]},
+                    {'node': 0,
+                     'begin_t': depot_arrival_time,
+                     **graph.nodes[0]}]
+                feasible_route = self.recalc_b_time_from_index(feasible_route, -1)
+
+                if is_route_valid_for_nn(feasible_route):
+                    route = feasible_route
+                    filtered_graph.remove_node(next_stop_node)
+                else:
+                    filtered_graph.remove_node(next_stop_node)  # TODO it may break all ?
+                    continue
+
+                condition = len(cand_dict.keys()) != 0
+            result_graph.remove_nodes_from([it['node'] for it in route[1:-1]])
+            return route, result_graph
+
         route_list = []
         init_graph = self.route_graph.copy()
         while len(init_graph.nodes) > 1:
@@ -154,9 +155,8 @@ class HeuristicSolver:
         return _route
 
     def do_reverse_sub_route(self, _route, i, j):
-        # print("[DEBUG] node_tuple: ", _route[i - 1], _route[i], _route[j - 1], _route[j])
         resulted_route = self.recalc_b_time_from_index(
-            _route[:i] + [it for it in reversed(_route[i:j])] + _route[j:], i)
+            _route[:i] + [it for it in reversed(_route[i:j])] + _route[j:], -1)
         return resulted_route
 
     def local_search(self, init_solution):
@@ -239,16 +239,13 @@ class HeuristicSolver:
             :param j: j-th node in _route_to
             :return: estimation of target metric delta and perturbation feasibility flag
             """
-            # print("[DEBUG] do relocate")
             _route_to = _route_to[:j] + [_route_from.pop(i)] + _route_to[j:]
-            # print("[DEBUG] from after", _route_from)
-            # print("[DEBUG] to after", _route_to)
 
             if len(_route_from) > 2:
-                _route_from = self.recalc_b_time_from_index(_route_from, i)
+                _route_from = self.recalc_b_time_from_index(_route_from, i - 1)
             else:
                 _route_from = []
-            _route_to = self.recalc_b_time_from_index(_route_to, j)
+            _route_to = self.recalc_b_time_from_index(_route_to, j - 1)
 
             return _route_from, _route_to
 
@@ -279,8 +276,8 @@ class HeuristicSolver:
             :return:
             """
             _route_a[a_node_ind], _route_b[b_node_ind] = _route_b[b_node_ind], _route_a[a_node_ind]
-            _route_b = self.recalc_b_time_from_index(_route_b, b_node_ind)
-            _route_a = self.recalc_b_time_from_index(_route_a, a_node_ind)
+            _route_b = self.recalc_b_time_from_index(_route_b, b_node_ind - 1)
+            _route_a = self.recalc_b_time_from_index(_route_a, a_node_ind - 1)
             return _route_a, _route_b
 
         def estimate_exchange_op(_route_a, _route_b, a_node_ind, b_node_ind):
@@ -302,8 +299,8 @@ class HeuristicSolver:
         def do_cross(_route_a, _route_b, a_node_ind, b_node_ind):
             _route_a, _route_b = _route_a[:a_node_ind + 1] + _route_b[b_node_ind + 1:], \
                                  _route_b[:b_node_ind + 1] + _route_a[a_node_ind + 1:]
-            _route_b = self.recalc_b_time_from_index(_route_b, b_node_ind)
-            _route_a = self.recalc_b_time_from_index(_route_a, a_node_ind)
+            _route_b = self.recalc_b_time_from_index(_route_b, b_node_ind - 1)
+            _route_a = self.recalc_b_time_from_index(_route_a, a_node_ind - 1)
             return _route_a, _route_b
 
         def estimate_cross_op(_route_a, _route_b, a_node_ind, b_node_ind):
@@ -355,14 +352,11 @@ class HeuristicSolver:
                                          + feasible_cross_colection,
                                          key=lambda x: x[0][0], reverse=True)
 
-        # print(len(perturbation_collection))
         perturbed_solution = local_solution.copy()
         perturbed_route_list = []
         for (_, _, route_tuple), ind_tuple in perturbation_collection:
             if all([ind not in perturbed_route_list for ind in ind_tuple]):
-                # print("[DEBUG] routes {} and {} successfully perturbed".format(*ind_tuple))
                 perturbed_solution[ind_tuple[0]], perturbed_solution[ind_tuple[1]] = route_tuple
-                # print(ind_tuple, )
                 perturbed_route_list.append(ind_tuple[0])
                 perturbed_route_list.append(ind_tuple[1])
             else:
