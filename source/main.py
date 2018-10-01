@@ -19,7 +19,7 @@ def main(graph_path):
     local_solution = solver.local_search(init_solution)
     history = [local_solution.copy()]
 
-    timeout = time.time() + 60 * 8  # 8 minutes from now
+    timeout = time.time() + 60 * 120  # 120 minutes from now
     for _ in range(1000):
         perturbed_solution = solver.perturbation(local_solution.copy())
         local_solution = solver.local_search(perturbed_solution.copy())
@@ -41,8 +41,10 @@ def main(graph_path):
 
 if __name__ == "__main__":
     root_dir = "../data/instances"
+    bonus_dir = os.path.join(root_dir, "bonus")
     problem_path_list = [os.path.join(root_dir, it) for it in os.listdir(root_dir) if
-                         it.endswith(".txt") or it.endswith(".TXT")]
+                         it.endswith(".txt") or it.endswith(".TXT")] + [os.path.join(bonus_dir, it) for it in
+                                                                        os.listdir(bonus_dir)]
     with Pool(processes=4) as pool:
         for res in pool.imap_unordered(main, problem_path_list):
             pass
