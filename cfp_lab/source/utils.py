@@ -5,7 +5,7 @@ import numpy as np
 
 class Cell:
     """
-    Cell or Cluster or Room that wrap set of parts and set of machines
+    Cell wrapper for set of parts and set of machines
     """
 
     def __init__(self, machines_set: Set[int], parts_set: Set[int], machine_part_matrix: np.array):
@@ -48,9 +48,13 @@ class Solution:
         # Each cluster must contain at least 1 machine and 1 part.
         flag &= all([len(_cell.parts_set) > 0 and len(_cell.machines_set) > 0 for _cell in self.cell_list])
         # Each machine must be assigned to exactly 1 cluster.
-        flag &= len(set.intersection(*[_cell.machines_set for _cell in self.cell_list])) == 0
+        flag &= all([len(self.cell_list[i].machines_set & self.cell_list[j].machines_set) == 0
+                     for i in range(len(self.cell_list))
+                     for j in range(i, len(self.cell_list))])
         # Each part must be assigned to exactly 1 cluster.
-        flag &= len(set.intersection(*[_cell.parts_set for _cell in self.cell_list])) == 0
+        flag &= all([len(self.cell_list[i].parts_set & self.cell_list[j].parts_set) == 0
+                     for i in range(len(self.cell_list))
+                     for j in range(i, len(self.cell_list))])
         return flag
 
 
