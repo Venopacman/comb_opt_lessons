@@ -1,4 +1,4 @@
-# 1st lab - Capacicated Vehicle Routing Problem With Time-Windows (CVRPTW)
+# 1st lab - Capacicated Vehicle Routing Problem with Time-Windows (CVRPTW)
 
 ## C108
 ![Image_of_c108_problem](https://github.com/Venopacman/comb_opt_lessons/blob/master/cvrptw_lab/data/instances/C108.png)
