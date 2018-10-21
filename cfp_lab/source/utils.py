@@ -31,6 +31,7 @@ class Solution:
         self.machine_part_matrix = machine_part_matrix
         self.cell_list = cell_list
         self.is_feasible = self.check_feasibility()
+        assert self.is_feasible
         self.efficacy = self.get_efficacy()
 
     def get_efficacy(self):
@@ -50,11 +51,11 @@ class Solution:
         # Each machine must be assigned to exactly 1 cluster.
         flag &= all([len(self.cell_list[i].machines_set & self.cell_list[j].machines_set) == 0
                      for i in range(len(self.cell_list))
-                     for j in range(i, len(self.cell_list))])
+                     for j in range(i, len(self.cell_list)) if i != j])
         # Each part must be assigned to exactly 1 cluster.
         flag &= all([len(self.cell_list[i].parts_set & self.cell_list[j].parts_set) == 0
                      for i in range(len(self.cell_list))
-                     for j in range(i, len(self.cell_list))])
+                     for j in range(i, len(self.cell_list)) if i != j])
         return flag
 
 

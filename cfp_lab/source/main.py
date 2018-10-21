@@ -1,3 +1,4 @@
+import json
 import os
 from multiprocessing import Pool
 
@@ -23,11 +24,14 @@ def save_solution(solution: Solution, sol_path):
 
 def main(path):
     solver = he.VariableNeighborhoodSolver(read_cfp_problem(path))
-    init_solution = solver._get_init_solution()
-    print(init_solution.efficacy)
-    global_solution = solver.general_vns_process(1000)
-    # print(len(neighborhood))
-    save_solution(global_solution, "/".join(path.split("/")[:-1] + [path.split("/")[-1].split(".")[0] + ".sol"]))
+    global_solution = solver.general_vns_process(100)
+    problem_name = path.split("/")[-1].split(".")[0]
+    result_dict = json.load(open("../data/best_results.json"))
+    if result_dict[problem_name] < global_solution.efficacy:
+        save_solution(global_solution, "/".join(path.split("/")[:-1] + [problem_name + ".sol"]))
+    result_dict[problem_name] = global_solution.efficacy
+    print("Problem {0} finished!".format(problem_name))
+    json.dump(result_dict, open("../data/best_results.json", 'w'), indent=2)
 
 
 if __name__ == "__main__":
@@ -35,6 +39,7 @@ if __name__ == "__main__":
     problem_path_list = [os.path.join(root_dir, it) for it in os.listdir(root_dir) if it.endswith('.txt')]
 
     # for problem in problem_path_list:
+    #     print(problem)
     #     main(problem)
     with Pool(processes=4) as pool:
         for res in pool.imap_unordered(main, problem_path_list):
