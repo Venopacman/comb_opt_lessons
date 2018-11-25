@@ -4,3 +4,5 @@ laboratory works for combinatoric optimization course
   - cvrptw_lab -- Iterated Local Search metaheuristic code for Capacicated Vehicle Routing Problem with Time Windows + experiments results
   
   - cfp_lab --  General Variable Neighborhood Search metaheuristic code for Cell Formation Problem  + experiments results
+  
+  - qap_lab -- Genetic Algorithm metaheuristic code for Quadratic Assigment Problem + experiments results
